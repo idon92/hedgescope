@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/sync-filings",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/sync-news",
+      "schedule": "0 */6 * * *"
+    }
+  ]
+}
