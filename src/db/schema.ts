@@ -66,3 +66,23 @@ export const newsArticles = pgTable(
     publishedIdx: index("news_published_idx").on(table.publishedDate),
   })
 );
+
+export const socialPosts = pgTable(
+  "social_posts",
+  {
+    id: serial("id").primaryKey(),
+    platform: varchar("platform", { length: 20 }).notNull(), // reddit, stocktwits, twitter, manual
+    authorHandle: varchar("author_handle", { length: 100 }),
+    content: text("content").notNull(),
+    sourceUrl: text("source_url"),
+    publishedDate: timestamp("published_date"),
+    matchedTickers: text("matched_tickers"), // JSON array
+    matchedFundIds: text("matched_fund_ids"), // JSON array
+    contentHash: varchar("content_hash", { length: 64 }).notNull().unique(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    platformIdx: index("social_platform_idx").on(table.platform),
+    publishedIdx: index("social_published_idx").on(table.publishedDate),
+  })
+);

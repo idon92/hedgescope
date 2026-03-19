@@ -1,9 +1,10 @@
 import { Suspense } from "react";
-import { getAllFundsWithSummary, getLatestNews } from "@/lib/queries";
+import { getAllFundsWithSummary, getLatestNews, getLatestSocialPosts } from "@/lib/queries";
 import { formatMarketValue, formatDate, fundSlug } from "@/lib/format";
 import SearchBar from "@/components/SearchBar";
 import EmailGate from "@/components/EmailGate";
 import NewsFeed from "@/components/NewsFeed";
+import SocialFeed from "@/components/SocialFeed";
 import { CardSkeleton } from "@/components/LoadingSkeleton";
 
 export const dynamic = "force-dynamic";
@@ -80,6 +81,11 @@ async function NewsSection() {
   return <NewsFeed articles={news} />;
 }
 
+async function SocialSection() {
+  const posts = await getLatestSocialPosts(20);
+  return <SocialFeed posts={posts} />;
+}
+
 export default function HomePage() {
   return (
     <>
@@ -107,7 +113,7 @@ export default function HomePage() {
             <FundGrid />
           </Suspense>
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-8">
           <Suspense
             fallback={
               <div className="animate-pulse space-y-3">
@@ -118,6 +124,17 @@ export default function HomePage() {
             }
           >
             <NewsSection />
+          </Suspense>
+          <Suspense
+            fallback={
+              <div className="animate-pulse space-y-3">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="h-20 bg-gray-800/50 rounded-lg" />
+                ))}
+              </div>
+            }
+          >
+            <SocialSection />
           </Suspense>
         </div>
       </div>

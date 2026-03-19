@@ -1,6 +1,7 @@
-import { getStockHolders, getNewsByTicker } from "@/lib/queries";
+import { getStockHolders, getNewsByTicker, getSocialByTicker } from "@/lib/queries";
 import StockHoldersTable from "./StockHoldersTable";
 import NewsFeed from "@/components/NewsFeed";
+import SocialFeed from "@/components/SocialFeed";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -11,9 +12,10 @@ interface Props {
 
 export default async function StockDetailPage({ params }: Props) {
   const ticker = params.ticker.toUpperCase();
-  const [holders, tickerNews] = await Promise.all([
+  const [holders, tickerNews, tickerSocial] = await Promise.all([
     getStockHolders(ticker),
     getNewsByTicker(ticker, 10),
+    getSocialByTicker(ticker, 10),
   ]);
 
   return (
@@ -39,11 +41,15 @@ export default async function StockDetailPage({ params }: Props) {
         <div className="lg:col-span-2">
           <StockHoldersTable holders={holders} />
         </div>
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-8">
           <NewsFeed
             articles={tickerNews}
             showFilter={false}
             title={`${ticker} News`}
+          />
+          <SocialFeed
+            posts={tickerSocial}
+            title={`${ticker} Social`}
           />
         </div>
       </div>

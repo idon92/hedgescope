@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { funds, holdings, newsArticles } from "@/db/schema";
+import { funds, holdings, newsArticles, socialPosts } from "@/db/schema";
 import { eq, desc, sql, asc } from "drizzle-orm";
 
 export async function getAllFundsWithSummary() {
@@ -196,6 +196,59 @@ export async function getNewsByTicker(
       if (!article.matchedTickers) return false;
       try {
         const tickers: string[] = JSON.parse(article.matchedTickers);
+        return tickers.some((t) => t.toUpperCase() === ticker.toUpperCase());
+      } catch {
+        return false;
+      }
+    })
+    .slice(0, limit);
+}
+
+// --- Social Queries ---
+
+export interface SocialPost {
+  id: number;
+  platform: string;
+  authorHandle: string | null;
+  content: string;
+  sourceUrl: string | null;
+  publishedDate: Date | null;
+  matchedTickers: string | null;
+  matchedFundIds: string | null;
+}
+
+export async function getLatestSocialPosts(
+  limit: number = 30,
+  platform?: string
+): Promise<SocialPost[]> {
+  let query = db
+    .select()
+    .from(socialPosts)
+    .orderBy(desc(socialPosts.publishedDate))
+    .limit(limit);
+
+  if (platform) {
+    query = query.where(eq(socialPosts.platform, platform)) as typeof query;
+  }
+
+  return query;
+}
+
+export async function getSocialByTicker(
+  ticker: string,
+  limit: number = 15
+): Promise<SocialPost[]> {
+  const allPosts = await db
+    .select()
+    .from(socialPosts)
+    .orderBy(desc(socialPosts.publishedDate))
+    .limit(200);
+
+  return allPosts
+    .filter((post) => {
+      if (!post.matchedTickers) return false;
+      try {
+        const tickers: string[] = JSON.parse(post.matchedTickers);
         return tickers.some((t) => t.toUpperCase() === ticker.toUpperCase());
       } catch {
         return false;
