@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getStockHolders, getNewsByTicker, getSocialByTicker } from "@/lib/queries";
 import StockHoldersTable from "./StockHoldersTable";
 import NewsFeed from "@/components/NewsFeed";
@@ -8,6 +9,14 @@ export const revalidate = 3600;
 
 interface Props {
   params: { ticker: string };
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const ticker = params.ticker.toUpperCase();
+  return {
+    title: `${ticker} — Hedge Fund Holders`,
+    description: `See which tracked hedge funds hold ${ticker}, with position sizes, portfolio weights, and related news.`,
+  };
 }
 
 export default async function StockDetailPage({ params }: Props) {

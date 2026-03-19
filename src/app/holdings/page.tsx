@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import { getCrossFundHoldings } from "@/lib/queries";
+
+export const metadata: Metadata = {
+  title: "Cross-Fund Holdings",
+  description: "Most commonly held stocks across all tracked hedge funds. Aggregated 13F data from SEC EDGAR.",
+};
 import CrossFundTable from "./CrossFundTable";
 
 export const dynamic = "force-dynamic";

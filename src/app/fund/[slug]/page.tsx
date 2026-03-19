@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getFundBySlug, getFundHoldings, getNewsByFundId } from "@/lib/queries";
 import { formatMarketValue, formatDate } from "@/lib/format";
@@ -11,6 +12,15 @@ export const revalidate = 3600;
 
 interface Props {
   params: { slug: string };
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const fund = await getFundBySlug(params.slug);
+  if (!fund) return { title: "Fund Not Found" };
+  return {
+    title: `${fund.name} — 13F Holdings`,
+    description: `View ${fund.name}'s latest 13F holdings, portfolio composition, and related news on HedgeScope.`,
+  };
 }
 
 export default async function FundDetailPage({ params }: Props) {

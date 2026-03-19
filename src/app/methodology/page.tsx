@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Trust Methodology",
+  description: "How HedgeScope scores information sources by trustworthiness — from official SEC filings to social media posts.",
+};
+
 export default function MethodologyPage() {
   return (
     <div className="max-w-3xl">
