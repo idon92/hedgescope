@@ -1,10 +1,16 @@
 import { Suspense } from "react";
-import { getAllFundsWithSummary, getLatestNews, getLatestSocialPosts } from "@/lib/queries";
+import {
+  getAllFundsWithSummary,
+  getLatestNews,
+  getLatestSocialPosts,
+  getRecentShiftsAcrossFunds,
+} from "@/lib/queries";
 import { formatMarketValue, formatDate, fundSlug } from "@/lib/format";
 import SearchBar from "@/components/SearchBar";
 import EmailGate from "@/components/EmailGate";
 import NewsFeed from "@/components/NewsFeed";
 import SocialFeed from "@/components/SocialFeed";
+import PositionShifts from "@/components/PositionShifts";
 import { CardSkeleton } from "@/components/LoadingSkeleton";
 
 export const dynamic = "force-dynamic";
@@ -86,6 +92,11 @@ async function SocialSection() {
   return <SocialFeed posts={posts} />;
 }
 
+async function ShiftsSection() {
+  const shifts = await getRecentShiftsAcrossFunds();
+  return <PositionShifts shifts={shifts} showFund title="Recent Position Shifts" />;
+}
+
 export default function HomePage() {
   return (
     <>
@@ -100,7 +111,7 @@ export default function HomePage() {
         <SearchBar />
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
           <Suspense
             fallback={
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,6 +122,13 @@ export default function HomePage() {
             }
           >
             <FundGrid />
+          </Suspense>
+          <Suspense
+            fallback={
+              <div className="animate-pulse h-64 bg-gray-800/50 rounded-xl" />
+            }
+          >
+            <ShiftsSection />
           </Suspense>
         </div>
         <div className="lg:col-span-1 space-y-8">

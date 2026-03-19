@@ -1,11 +1,19 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getFundBySlug, getFundHoldings, getNewsByFundId } from "@/lib/queries";
+import {
+  getFundBySlug,
+  getFundHoldings,
+  getNewsByFundId,
+  getFundPositionChanges,
+} from "@/lib/queries";
 import { formatMarketValue, formatDate } from "@/lib/format";
+import { categorizeHoldings } from "@/lib/holdings-categories";
 import { TableSkeleton } from "@/components/LoadingSkeleton";
 import FundHoldingsTable from "./FundHoldingsTable";
 import NewsFeed from "@/components/NewsFeed";
+import HoldingsPieChart from "@/components/HoldingsPieChart";
+import PositionShifts from "@/components/PositionShifts";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -30,9 +38,10 @@ export default async function FundDetailPage({ params }: Props) {
     notFound();
   }
 
-  const [holdings, fundNews] = await Promise.all([
+  const [holdings, fundNews, positionChanges] = await Promise.all([
     getFundHoldings(fund.id),
     getNewsByFundId(fund.id, 10),
+    getFundPositionChanges(fund.id),
   ]);
 
   const totalMarketValue = holdings.reduce(
@@ -47,6 +56,8 @@ export default async function FundDetailPage({ params }: Props) {
         ? (h.marketValueThousands / totalMarketValue) * 100
         : 0,
   }));
+
+  const categories = categorizeHoldings(holdings);
 
   return (
     <div>
@@ -68,6 +79,20 @@ export default async function FundDetailPage({ params }: Props) {
         </div>
       </div>
 
+      {/* Pie Charts + Position Shifts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <HoldingsPieChart
+          bySector={categories.bySector}
+          byCap={categories.byCap}
+          byGeography={categories.byGeography}
+        />
+        <PositionShifts
+          shifts={positionChanges.slice(0, 15)}
+          title="Quarter-over-Quarter Changes"
+        />
+      </div>
+
+      {/* Holdings Table + News */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           <Suspense fallback={<TableSkeleton />}>

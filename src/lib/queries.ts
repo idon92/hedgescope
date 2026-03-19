@@ -48,12 +48,151 @@ export async function getFundBySlug(slug: string) {
   return fund || null;
 }
 
-export async function getFundHoldings(fundId: number) {
-  return db
+export async function getFundHoldings(fundId: number, filingDate?: Date) {
+  const allHoldings = await db
     .select()
     .from(holdings)
     .where(eq(holdings.fundId, fundId))
     .orderBy(desc(holdings.marketValueThousands));
+
+  if (!filingDate) {
+    // Return only the latest quarter's holdings
+    const dates = Array.from(new Set(allHoldings.map((h) => h.filingDate.getTime())));
+    if (dates.length === 0) return [];
+    const latestDate = Math.max(...dates);
+    return allHoldings.filter((h) => h.filingDate.getTime() === latestDate);
+  }
+
+  return allHoldings.filter((h) => h.filingDate.getTime() === filingDate.getTime());
+}
+
+export async function getFundFilingDates(fundId: number): Promise<Date[]> {
+  const allHoldings = await db
+    .select({ filingDate: holdings.filingDate })
+    .from(holdings)
+    .where(eq(holdings.fundId, fundId))
+    .groupBy(holdings.filingDate)
+    .orderBy(desc(holdings.filingDate));
+
+  return allHoldings.map((h) => h.filingDate);
+}
+
+export interface PositionChange {
+  ticker: string | null;
+  companyName: string;
+  cusip: string;
+  currentShares: number;
+  previousShares: number;
+  shareDelta: number;
+  shareChangePct: number;
+  currentValue: number;
+  previousValue: number;
+  valueDelta: number;
+  status: "new" | "exited" | "increased" | "decreased" | "unchanged";
+}
+
+export async function getFundPositionChanges(fundId: number): Promise<PositionChange[]> {
+  const allHoldings = await db
+    .select()
+    .from(holdings)
+    .where(eq(holdings.fundId, fundId));
+
+  // Find the two most recent filing dates
+  const dates = Array.from(new Set(allHoldings.map((h) => h.filingDate.getTime()))).sort(
+    (a, b) => b - a
+  );
+
+  if (dates.length < 2) return [];
+
+  const currentDate = dates[0];
+  const previousDate = dates[1];
+
+  const current = allHoldings.filter((h) => h.filingDate.getTime() === currentDate);
+  const previous = allHoldings.filter((h) => h.filingDate.getTime() === previousDate);
+
+  const prevMap = new Map(previous.map((h) => [h.cusip, h]));
+  const currMap = new Map(current.map((h) => [h.cusip, h]));
+
+  const changes: PositionChange[] = [];
+
+  // Current holdings — check for new, increased, decreased
+  for (const h of current) {
+    const prev = prevMap.get(h.cusip);
+    if (!prev) {
+      changes.push({
+        ticker: h.ticker,
+        companyName: h.companyName,
+        cusip: h.cusip,
+        currentShares: h.shares,
+        previousShares: 0,
+        shareDelta: h.shares,
+        shareChangePct: 100,
+        currentValue: h.marketValueThousands,
+        previousValue: 0,
+        valueDelta: h.marketValueThousands,
+        status: "new",
+      });
+    } else {
+      const shareDelta = h.shares - prev.shares;
+      const pct = prev.shares > 0 ? (shareDelta / prev.shares) * 100 : 0;
+      const status = shareDelta > 0 ? "increased" : shareDelta < 0 ? "decreased" : "unchanged";
+      changes.push({
+        ticker: h.ticker,
+        companyName: h.companyName,
+        cusip: h.cusip,
+        currentShares: h.shares,
+        previousShares: prev.shares,
+        shareDelta,
+        shareChangePct: pct,
+        currentValue: h.marketValueThousands,
+        previousValue: prev.marketValueThousands,
+        valueDelta: h.marketValueThousands - prev.marketValueThousands,
+        status,
+      });
+    }
+  }
+
+  // Exited positions
+  for (const h of previous) {
+    if (!currMap.has(h.cusip)) {
+      changes.push({
+        ticker: h.ticker,
+        companyName: h.companyName,
+        cusip: h.cusip,
+        currentShares: 0,
+        previousShares: h.shares,
+        shareDelta: -h.shares,
+        shareChangePct: -100,
+        currentValue: 0,
+        previousValue: h.marketValueThousands,
+        valueDelta: -h.marketValueThousands,
+        status: "exited",
+      });
+    }
+  }
+
+  // Sort by absolute value change
+  return changes.sort((a, b) => Math.abs(b.valueDelta) - Math.abs(a.valueDelta));
+}
+
+export async function getRecentShiftsAcrossFunds(): Promise<
+  Array<PositionChange & { fundName: string; fundId: number }>
+> {
+  const allFunds = await db.select().from(funds);
+  const allShifts: Array<PositionChange & { fundName: string; fundId: number }> = [];
+
+  for (const fund of allFunds) {
+    const changes = await getFundPositionChanges(fund.id);
+    // Take the top notable shifts (new, exited, or big % changes)
+    const notable = changes.filter(
+      (c) => c.status === "new" || c.status === "exited" || Math.abs(c.shareChangePct) > 20
+    );
+    for (const c of notable.slice(0, 10)) {
+      allShifts.push({ ...c, fundName: fund.name, fundId: fund.id });
+    }
+  }
+
+  return allShifts.sort((a, b) => Math.abs(b.valueDelta) - Math.abs(a.valueDelta)).slice(0, 20);
 }
 
 export async function getCrossFundHoldings() {

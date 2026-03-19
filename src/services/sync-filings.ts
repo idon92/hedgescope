@@ -3,7 +3,7 @@ import { funds, holdings } from "@/db/schema";
 import { TRACKED_FUNDS } from "@/config/funds";
 import { getRecent13FFilings, parse13FHoldings } from "./edgar";
 import { delay } from "@/lib/sec-headers";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export interface SyncResult {
   fund: string;
@@ -66,11 +66,11 @@ export async function syncAllFilings(): Promise<SyncResult[]> {
           continue;
         }
 
-        // Delete old holdings for this fund+date combo to avoid duplicates, then insert
+        // Delete holdings for this specific fund+date combo to avoid duplicates
         const filingDate = new Date(filing.filingDate);
         await db
           .delete(holdings)
-          .where(eq(holdings.fundId, fundId));
+          .where(and(eq(holdings.fundId, fundId), eq(holdings.filingDate, filingDate)));
 
         // Insert all holdings
         const holdingValues = parsedHoldings.map((h) => ({
