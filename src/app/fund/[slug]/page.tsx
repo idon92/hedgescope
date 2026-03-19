@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import {
@@ -8,12 +7,15 @@ import {
   getFundPositionChanges,
 } from "@/lib/queries";
 import { formatMarketValue, formatDate } from "@/lib/format";
-import { categorizeHoldings } from "@/lib/holdings-categories";
-import { TableSkeleton } from "@/components/LoadingSkeleton";
-import FundHoldingsTable from "./FundHoldingsTable";
+import {
+  categorizeHoldings,
+  getSector,
+  getCapCategory,
+  getGeography,
+} from "@/lib/holdings-categories";
 import NewsFeed from "@/components/NewsFeed";
-import HoldingsPieChart from "@/components/HoldingsPieChart";
 import PositionShifts from "@/components/PositionShifts";
+import FundDashboard from "./FundDashboard";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 3600;
@@ -49,12 +51,15 @@ export default async function FundDetailPage({ params }: Props) {
     0
   );
 
-  const holdingsWithWeight = holdings.map((h) => ({
+  const holdingsWithCategories = holdings.map((h) => ({
     ...h,
     weight:
       totalMarketValue > 0
         ? (h.marketValueThousands / totalMarketValue) * 100
         : 0,
+    sector: getSector(h.ticker, h.companyName),
+    capCategory: getCapCategory(h.marketValueThousands),
+    geography: getGeography(h.ticker),
   }));
 
   const categories = categorizeHoldings(holdings);
@@ -79,25 +84,21 @@ export default async function FundDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* Pie Charts + Position Shifts row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <HoldingsPieChart
-          bySector={categories.bySector}
-          byCap={categories.byCap}
-          byGeography={categories.byGeography}
-        />
+      {/* Position Shifts */}
+      <div className="mb-8">
         <PositionShifts
           shifts={positionChanges.slice(0, 15)}
           title="Quarter-over-Quarter Changes"
         />
       </div>
 
-      {/* Holdings Table + News */}
+      {/* Pie Chart (with tab selector) + Holdings Table (category column synced to tab) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <Suspense fallback={<TableSkeleton />}>
-            <FundHoldingsTable holdings={holdingsWithWeight} />
-          </Suspense>
+          <FundDashboard
+            holdings={holdingsWithCategories}
+            categories={categories}
+          />
         </div>
         <div className="lg:col-span-1">
           <NewsFeed

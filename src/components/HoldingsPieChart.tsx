@@ -5,10 +5,14 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { formatMarketValue } from "@/lib/format";
 import type { CategoryBreakdown } from "@/lib/holdings-categories";
 
+export type ChartTabType = "sector" | "cap" | "geography";
+
 interface HoldingsPieChartProps {
   bySector: CategoryBreakdown[];
   byCap: CategoryBreakdown[];
   byGeography: CategoryBreakdown[];
+  activeTab?: ChartTabType;
+  onTabChange?: (tab: ChartTabType) => void;
 }
 
 const SECTOR_COLORS: Record<string, string> = {
@@ -70,8 +74,15 @@ export default function HoldingsPieChart({
   bySector,
   byCap,
   byGeography,
+  activeTab,
+  onTabChange,
 }: HoldingsPieChartProps) {
-  const [tab, setTab] = useState<ChartTab>("sector");
+  const [internalTab, setInternalTab] = useState<ChartTab>("sector");
+  const tab = (activeTab as ChartTab) || internalTab;
+  const setTab = (t: ChartTab) => {
+    setInternalTab(t);
+    onTabChange?.(t);
+  };
 
   const datasets: Record<ChartTab, CategoryBreakdown[]> = {
     sector: bySector,
